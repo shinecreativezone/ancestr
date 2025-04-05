@@ -9,7 +9,7 @@ export default function Demo() {
   const [messages, setMessages] = useState<Message[]>([
     { 
       id: 1, 
-      role: 'twin', 
+      role: 'twin' as const, 
       content: "Hello, dear. It's so nice to see you. What would you like to talk about today?",
       timestamp: new Date().toISOString()
     }
@@ -22,9 +22,9 @@ export default function Demo() {
     if (!inputValue.trim()) return;
     
     // Add user message
-    const userMessage = {
+    const userMessage: Message = {
       id: messages.length + 1,
-      role: 'user',
+      role: 'user' as const,
       content: inputValue,
       timestamp: new Date().toISOString()
     };
@@ -45,9 +45,9 @@ export default function Demo() {
       
       const randomResponse = twinResponses[Math.floor(Math.random() * twinResponses.length)];
       
-      const twinMessage = {
+      const twinMessage: Message = {
         id: messages.length + 2,
-        role: 'twin',
+        role: 'twin' as const,
         content: randomResponse,
         timestamp: new Date().toISOString()
       };

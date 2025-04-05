@@ -2,7 +2,7 @@
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Check, Upload, FileText, User, MessageCircle, CircleCheck, CircleIcon } from "lucide-react";
+import { Check, Upload, FileText, User, MessageCircle, CircleCheck, CircleIcon, Mic } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function TwinCreate() {
