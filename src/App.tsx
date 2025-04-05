@@ -10,6 +10,7 @@ import Demo from "./pages/Demo";
 import HowItWorks from "./pages/HowItWorks";
 import Waitlist from "./pages/Waitlist";
 import TwinCreate from "./pages/TwinCreate";
+import TwinUpload from "./pages/TwinUpload";
 import About from "./pages/About";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/twin/create" element={<TwinCreate />} />
+          <Route path="/twin/upload" element={<TwinUpload />} />
           <Route path="/about" element={<About />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
