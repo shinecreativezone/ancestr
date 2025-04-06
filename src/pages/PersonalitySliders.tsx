@@ -122,8 +122,21 @@ export default function PersonalitySliders() {
       description: "Your avatar profile has been created. Proceeding to data upload."
     });
     
-    // Navigate to the upload page
-    navigate("/twin/upload");
+    // Navigate to the dashboard
+    navigate("/dashboard");
+  };
+
+  const handleSkip = () => {
+    // Set default values
+    sessionStorage.setItem("personalityProfile", JSON.stringify(personalityValues));
+    
+    toast({
+      title: "Profile Created",
+      description: "Default personality values have been set. You can update them later."
+    });
+
+    // Navigate to the next page
+    navigate("/dashboard");
   };
 
   if (!avatarProfile) {
@@ -172,13 +185,22 @@ export default function PersonalitySliders() {
                 ))}
                 
                 <div className="flex justify-between pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate("/profile-creation")}
-                  >
-                    Back
-                  </Button>
+                  <div className="flex gap-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => navigate("/profile-creation")}
+                    >
+                      Back
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={handleSkip}
+                    >
+                      Skip for Now
+                    </Button>
+                  </div>
                   <Button type="button" onClick={handleSubmit}>
                     Complete Profile
                   </Button>

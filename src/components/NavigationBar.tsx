@@ -15,10 +15,10 @@ export function NavigationBar() {
     <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
       <div className="container flex justify-between items-center py-4">
         <Link to="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-forever-500 to-memory-600 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">F</span>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-warmth-500 to-memory-600 flex items-center justify-center">
+            <span className="text-white font-bold text-lg">A</span>
           </div>
-          <span className="font-serif font-bold text-xl text-gray-900">Forever</span>
+          <span className="font-serif font-bold text-xl text-gray-900">Ancestr</span>
         </Link>
         
         {isMobile ? (
@@ -29,7 +29,7 @@ export function NavigationBar() {
           <nav className="flex items-center space-x-8">
             <NavLinks />
             <div className="flex items-center space-x-3">
-              <Link to="/demo">
+              <Link to="/avatar-type">
                 <Button variant="outline" className="font-medium">Try Demo</Button>
               </Link>
               <Link to="/waitlist">
@@ -46,7 +46,7 @@ export function NavigationBar() {
           <nav className="container flex flex-col py-8 space-y-6">
             <NavLinks mobile />
             <div className="flex flex-col space-y-3 pt-4">
-              <Link to="/demo" onClick={toggleMenu}>
+              <Link to="/avatar-type" onClick={toggleMenu}>
                 <Button variant="outline" className="w-full">Try Demo</Button>
               </Link>
               <Link to="/waitlist" onClick={toggleMenu}>

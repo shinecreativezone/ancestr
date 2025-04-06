@@ -40,7 +40,7 @@ export default function AvatarType() {
     
     // Store contribution code and redirect to appropriate page
     sessionStorage.setItem("contributionCode", contributionCode);
-    navigate("/twin/upload"); // Skip directly to upload page for contributions
+    navigate("/dashboard"); // Skip directly to dashboard page for contributions
   };
 
   return (

@@ -1,8 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@/components/PageLayout";
 import { Link } from "react-router-dom";
-import { ArrowRight, Heart, MessageCircle, Upload, VideoIcon, Mic, FileText, User } from "lucide-react";
+import { ArrowRight, Heart, MessageCircle, Upload, VideoIcon, Mic, FileText, User, Image } from "lucide-react";
 
 export default function Index() {
   return (
@@ -27,13 +26,13 @@ function Hero() {
             <br />
             <span className="text-gray-900">One more story. One more conversation.</span>
             <br />
-            <span className="text-forever-700">Forever.</span>
+            <span className="text-warmth-500">Ancestr.</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto">
             Create a digital twin of your loved ones to preserve their memories, stories, and personality for generations to come.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/demo">
+            <Link to="/avatar-type">
               <Button size="lg" variant="outline" className="text-lg px-6 h-14 font-medium">
                 Try the Demo
               </Button>
@@ -52,13 +51,12 @@ function Hero() {
           <div className="container">
             <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
               <div className="relative aspect-video">
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                  <div className="text-center text-white">
-                    <p className="text-lg font-medium mb-2">Demo Video Player</p>
-                    <p className="text-gray-400">Emotional video of someone talking to their digital twin</p>
-                  </div>
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
+                <img 
+                  src="https://images.unsplash.com/photo-1529179307417-ca83d09867b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
+                  alt="Family looking at old photo album together" 
+                  className="object-cover w-full h-full"
+                />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                   <Button size="lg" className="rounded-full w-16 h-16 bg-white/20 backdrop-blur-sm border-2 border-white hover:bg-white/30">
                     <VideoIcon className="h-8 w-8 text-white" />
                   </Button>
