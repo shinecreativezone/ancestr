@@ -12,6 +12,9 @@ import Waitlist from "./pages/Waitlist";
 import TwinCreate from "./pages/TwinCreate";
 import TwinUpload from "./pages/TwinUpload";
 import About from "./pages/About";
+import AvatarType from "./pages/AvatarType";
+import ProfileCreation from "./pages/ProfileCreation";
+import PersonalitySliders from "./pages/PersonalitySliders";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +32,9 @@ const App = () => (
           <Route path="/twin/create" element={<TwinCreate />} />
           <Route path="/twin/upload" element={<TwinUpload />} />
           <Route path="/about" element={<About />} />
+          <Route path="/avatar-type" element={<AvatarType />} />
+          <Route path="/profile-creation" element={<ProfileCreation />} />
+          <Route path="/personality-sliders" element={<PersonalitySliders />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
