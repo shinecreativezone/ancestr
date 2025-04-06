@@ -1,213 +1,181 @@
 
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { toast } from "@/hooks/use-toast";
-
-// Define the personality traits with their labels
-const personalityTraits = [
-  {
-    id: "optimism",
-    label: "Optimism",
-    leftLabel: "Pessimistic",
-    rightLabel: "Optimistic",
-    description: "General outlook on life and expectations for the future."
-  },
-  {
-    id: "extraversion",
-    label: "Social Energy",
-    leftLabel: "Introverted",
-    rightLabel: "Extroverted",
-    description: "Preference for social interaction and external stimulation."
-  },
-  {
-    id: "organization",
-    label: "Organization",
-    leftLabel: "Disorganized",
-    rightLabel: "Organized",
-    description: "Approach to structure, planning, and orderliness."
-  },
-  {
-    id: "riskTaking",
-    label: "Risk Preference",
-    leftLabel: "Cautious",
-    rightLabel: "Risk Taking",
-    description: "Comfort with uncertainty and willingness to take chances."
-  },
-  {
-    id: "thinkingStyle",
-    label: "Thinking Style",
-    leftLabel: "Intuitive",
-    rightLabel: "Analytical",
-    description: "Reliance on feeling versus logical analysis."
-  },
-  {
-    id: "attitudeToChange",
-    label: "Attitude to Change",
-    leftLabel: "Avoids Change",
-    rightLabel: "Loves Change",
-    description: "Response to new situations and environments."
-  },
-  {
-    id: "patience",
-    label: "Patience",
-    leftLabel: "Impatient",
-    rightLabel: "Patient",
-    description: "Ability to wait calmly or tolerate delays."
-  },
-  {
-    id: "communicationStyle",
-    label: "Communication Style",
-    leftLabel: "Blunt",
-    rightLabel: "Diplomatic",
-    description: "Approach to expressing thoughts and opinions."
-  }
-];
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowRight, Info } from "lucide-react";
 
 export default function PersonalitySliders() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Define personality traits with descriptions and slider values
+  const [traits, setTraits] = useState({
+    optimism: { value: 0.5, label: "Optimism", left: "Pessimistic", right: "Optimistic", 
+      description: "Tendency to expect positive outcomes and see the good in situations" },
+    extraversion: { value: 0.5, label: "Extraversion", left: "Introverted", right: "Extroverted", 
+      description: "Energy from social interactions vs. solitary activities" },
+    organization: { value: 0.5, label: "Organization", left: "Disorganized", right: "Organized", 
+      description: "Preference for structure, planning, and orderliness" },
+    riskTaking: { value: 0.5, label: "Risk Preference", left: "Cautious", right: "Risk Taking", 
+      description: "Willingness to take chances or prefer safety" },
+    thinkingStyle: { value: 0.5, label: "Thinking Style", left: "Intuitive", right: "Analytical", 
+      description: "Reliance on gut feeling vs. logical analysis" },
+    changeAttitude: { value: 0.5, label: "Attitude to Change", left: "Avoids Change", right: "Loves Change", 
+      description: "Comfort with new situations and changing circumstances" },
+    patience: { value: 0.5, label: "Patience", left: "Impatient", right: "Patient", 
+      description: "Ability to wait calmly or desire for immediate results" },
+    communicationStyle: { value: 0.5, label: "Communication Style", left: "Blunt", right: "Diplomatic", 
+      description: "Direct vs. tactful approach to communication" },
+  });
+  
+  const [activeDescription, setActiveDescription] = useState("");
   const [avatarProfile, setAvatarProfile] = useState<any>(null);
-  const [personalityValues, setPersonalityValues] = useState<Record<string, number>>({});
-
-  // Check if user came from the profile creation page
+  
   useEffect(() => {
-    // Initialize all sliders to 0.5 (middle position)
-    const initialValues: Record<string, number> = {};
-    personalityTraits.forEach(trait => {
-      initialValues[trait.id] = 0.5;
-    });
-    setPersonalityValues(initialValues);
-    
-    // Get avatar profile from session storage
+    // Load avatar profile from session storage
     const storedProfile = sessionStorage.getItem("avatarProfile");
-    if (!storedProfile) {
-      // If no profile is stored, redirect back to the profile creation page
-      navigate("/profile-creation");
-      return;
+    if (storedProfile) {
+      setAvatarProfile(JSON.parse(storedProfile));
+    } else {
+      // If no profile exists, redirect to profile creation
+      navigate("/avatar-type");
     }
     
-    try {
-      setAvatarProfile(JSON.parse(storedProfile));
-    } catch (error) {
-      console.error("Error parsing stored profile:", error);
-      navigate("/profile-creation");
+    // Check if personality profile already exists
+    const storedPersonality = sessionStorage.getItem("personalityProfile");
+    if (storedPersonality) {
+      setTraits(prev => {
+        const stored = JSON.parse(storedPersonality);
+        const updated = { ...prev };
+        Object.keys(updated).forEach(key => {
+          if (stored[key] !== undefined) {
+            updated[key] = { ...updated[key], value: stored[key] };
+          }
+        });
+        return updated;
+      });
     }
   }, [navigate]);
-
-  const handleSliderChange = (traitId: string, value: number[]) => {
-    setPersonalityValues({
-      ...personalityValues,
-      [traitId]: value[0]
-    });
+  
+  const handleSliderChange = (trait: string, newValue: number[]) => {
+    setTraits(prev => ({
+      ...prev,
+      [trait]: { ...prev[trait as keyof typeof prev], value: newValue[0] }
+    }));
   };
-
+  
   const handleSubmit = () => {
-    // Save personality data to session storage
-    sessionStorage.setItem("personalityProfile", JSON.stringify(personalityValues));
-    
-    // Combine with avatar profile for a complete dataset
-    const completeProfile = {
-      ...avatarProfile,
-      personality: personalityValues
-    };
-    
-    // In a real application, you would send this data to your backend
-    console.log("Complete profile to be submitted:", completeProfile);
-    
-    toast({
-      title: "Profile Complete!",
-      description: "Your avatar profile has been created. Proceeding to data upload."
+    // Extract just the values for storage
+    const personalityValues: Record<string, number> = {};
+    Object.entries(traits).forEach(([key, data]) => {
+      personalityValues[key] = data.value;
     });
     
-    // Navigate to the dashboard
-    navigate("/dashboard");
-  };
-
-  const handleSkip = () => {
-    // Set default values
+    // Store in session storage
     sessionStorage.setItem("personalityProfile", JSON.stringify(personalityValues));
     
     toast({
-      title: "Profile Created",
-      description: "Default personality values have been set. You can update them later."
+      title: "Personality profile saved",
+      description: "Your personality settings have been recorded successfully.",
     });
-
+    
     // Navigate to the next page
-    navigate("/dashboard");
+    navigate("/twin/upload");
   };
-
-  if (!avatarProfile) {
-    return <div>Loading...</div>;
-  }
-
+  
+  const handleSkip = () => {
+    toast({
+      title: "Personality profile skipped",
+      description: "You can define the personality later from your dashboard.",
+    });
+    
+    // Navigate to the next page
+    navigate("/twin/upload");
+  };
+  
   return (
     <PageLayout>
       <div className="pt-24 pb-16">
-        <div className="container max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">Personality Assessment</h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Adjust these sliders to reflect the personality traits of 
-              {avatarProfile.avatarType === "self" ? " yourself." : " your loved one."}
-            </p>
-          </div>
-
-          <Card className="p-6">
-            <CardContent className="p-0">
-              <div className="space-y-8">
-                {personalityTraits.map((trait) => (
-                  <div key={trait.id} className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-medium text-lg">{trait.label}</h3>
-                      <div className="text-sm text-gray-500 max-w-xs text-right">
-                        {trait.description}
+        <div className="container">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">Define Personality Traits</h1>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Adjust these sliders to reflect {avatarProfile?.firstName || "your avatar's"} personality traits.
+                These settings will help create more authentic interactions.
+              </p>
+            </div>
+            
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Personality Profile</CardTitle>
+                <CardDescription>
+                  Move each slider to where you feel it best represents the personality trait
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {Object.entries(traits).map(([key, trait]) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <label className="text-sm font-medium mr-2">{trait.label}</label>
+                        <button 
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          onMouseEnter={() => setActiveDescription(trait.description)}
+                          onMouseLeave={() => setActiveDescription("")}
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
                       </div>
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
+                        {trait.value < 0.4 ? "Low" : trait.value > 0.6 ? "High" : "Balanced"}
+                      </span>
                     </div>
                     
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2">
-                        <div className="text-sm text-gray-600">{trait.leftLabel}</div>
-                        <div className="text-sm text-gray-600 text-right">{trait.rightLabel}</div>
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-2 text-xs text-gray-500 text-right">{trait.left}</div>
+                      <div className="col-span-8">
+                        <Slider
+                          value={[trait.value]}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          onValueChange={(value) => handleSliderChange(key, value)}
+                          className="cursor-pointer"
+                        />
                       </div>
-                      
-                      <Slider
-                        onValueChange={(value) => handleSliderChange(trait.id, value)}
-                        defaultValue={[0.5]}
-                        max={1}
-                        step={0.01}
-                        value={[personalityValues[trait.id] || 0.5]}
-                      />
+                      <div className="col-span-2 text-xs text-gray-500">{trait.right}</div>
                     </div>
                   </div>
                 ))}
                 
-                <div className="flex justify-between pt-4">
-                  <div className="flex gap-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => navigate("/profile-creation")}
-                    >
-                      Back
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={handleSkip}
-                    >
-                      Skip for Now
-                    </Button>
+                {activeDescription && (
+                  <div className="mt-4 p-3 bg-gray-50 border border-gray-100 rounded-md text-sm text-gray-600 animate-fade-in">
+                    {activeDescription}
                   </div>
-                  <Button type="button" onClick={handleSubmit}>
-                    Complete Profile
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-between border-t pt-6">
+                <Button variant="outline" onClick={handleSkip}>
+                  Skip for Now
+                </Button>
+                <Button onClick={handleSubmit} className="btn-gradient">
+                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <div className="text-center text-sm text-gray-500">
+              <p>
+                These personality traits help create more realistic and personalized conversations.
+                You can always update these settings later from your dashboard.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </PageLayout>
