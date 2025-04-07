@@ -7,33 +7,33 @@
 
 @layer base {
   :root {
-    --background: 240 27% 98%;
-    --foreground: 222 47% 11%;
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 240 10% 14%; /* #242424 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 240 10% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 240 10% 14%;
 
-    --primary: 226 100% 66%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 201 43% 23%; /* #1F4959 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 197 21% 45%; /* #5C7C89 */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 5% 96%;
+    --muted: 210 25% 98%;
     --muted-foreground: 240 4% 46%;
 
-    --accent: 270 76% 95%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 204 94% 7%; /* #011425 */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 240 6% 90%;
+    --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 222 47% 11%;
+    --ring: 201 43% 23%; /* #1F4959 */
 
     --radius: 0.5rem;
 
@@ -48,42 +48,42 @@
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 204 94% 7%; /* #011425 darker version */
+    --foreground: 0 0% 100%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 201 43% 13%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 201 43% 13%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 197 21% 45%; /* #5C7C89 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 201 43% 23%; /* #1F4959 */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217 33% 18%;
+    --muted: 201 43% 13%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 217 33% 18%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 201 43% 18%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 213 27% 84%;
+    --border: 201 43% 18%;
+    --input: 201 43% 18%;
+    --ring: 197 21% 45%;
     
-    --sidebar-background: 240 6% 10%;
-    --sidebar-foreground: 240 5% 96%;
-    --sidebar-primary: 224 76% 48%;
+    --sidebar-background: 204 94% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 197 21% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 16%;
-    --sidebar-accent-foreground: 240 5% 96%;
-    --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 201 43% 13%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 201 43% 13%;
+    --sidebar-ring: 197 21% 45%;
   }
 }
 
@@ -103,19 +103,19 @@
 
 @layer components {
   .gradient-text {
-    @apply bg-gradient-to-r from-forever-600 to-memory-500 text-transparent bg-clip-text;
+    @apply bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text;
   }
   
   .gradient-border {
-    @apply border border-transparent bg-gradient-to-br from-forever-500 to-memory-500 bg-clip-border;
+    @apply border border-transparent bg-gradient-to-br from-primary to-secondary bg-clip-border;
   }
   
   .input-gradient-focus {
-    @apply focus:ring-2 focus:ring-forever-200 focus:border-forever-400 transition-all duration-300;
+    @apply focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-300;
   }
   
   .btn-gradient {
-    @apply bg-gradient-to-r from-forever-600 to-memory-600 hover:from-forever-700 hover:to-memory-700 text-white;
+    @apply bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white;
   }
 }
 
@@ -125,5 +125,5 @@
 
 .memory-card-hover:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(31, 73, 89, 0.1), 0 8px 10px -6px rgba(31, 73, 89, 0.1);
 }

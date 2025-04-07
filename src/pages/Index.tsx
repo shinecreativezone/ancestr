@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@/components/PageLayout";
 import { Link } from "react-router-dom";
@@ -18,15 +19,24 @@ export default function Index() {
 
 function Hero() {
   return (
-    <section className="pt-24 md:pt-32 pb-16 md:pb-24">
-      <div className="container">
+    <section className="relative pt-24 md:pt-32 pb-16 md:pb-24">
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <img 
+          src="https://images.unsplash.com/photo-1652085648070-d73935b6ff35?q=80&w=2481&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+          alt="Family memories" 
+          className="w-full h-full object-cover opacity-20"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 to-background"></div>
+      </div>
+      
+      <div className="container relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
             <span className="gradient-text">Your mother's laugh. Your father's voice.</span>
             <br />
-            <span className="text-gray-900">One more story. One more conversation.</span>
+            <span className="text-foreground">One more story. One more conversation.</span>
             <br />
-            <span className="text-warmth-500">Ancestr.</span>
+            <span className="text-secondary">Ancestr.</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto">
             Create a digital twin of your loved ones to preserve their memories, stories, and personality for generations to come.
@@ -42,27 +52,6 @@ function Hero() {
                 Join Waitlist <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-16 md:mt-24 relative">
-        <div className="bg-gray-100 py-16">
-          <div className="container">
-            <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="relative aspect-video">
-                <img 
-                  src="https://images.unsplash.com/photo-1529179307417-ca83d09867b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
-                  alt="Family looking at old photo album together" 
-                  className="object-cover w-full h-full"
-                />
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <Button size="lg" className="rounded-full w-16 h-16 bg-white/20 backdrop-blur-sm border-2 border-white hover:bg-white/30">
-                    <VideoIcon className="h-8 w-8 text-white" />
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -119,23 +108,31 @@ function HowItWorks() {
   const steps = [
     {
       icon: <Upload className="h-10 w-10 text-white" />,
-      title: "Collect & Upload",
-      description: "Gather photos, videos, voice recordings, writings, and memories from family and friends."
+      title: "Choose Avatar Type",
+      description: "Select whether you're creating an avatar for yourself, a loved one, or contributing to an existing avatar.",
+      imageSrc: "/images/avatar-type-screenshot.png",
+      imageAlt: "Avatar type selection screen"
     },
     {
       icon: <FileText className="h-10 w-10 text-white" />,
       title: "Create Profile",
-      description: "Complete personality questionnaires and provide context about relationships and life events."
+      description: "Upload photos and provide basic demographic information about the person you're creating an avatar for.",
+      imageSrc: "/images/profile-creation-screenshot.png",
+      imageAlt: "Profile creation screen"
     },
     {
       icon: <User className="h-10 w-10 text-white" />,
-      title: "Preview & Refine",
-      description: "Test your digital twin and refine its responses and personality traits."
+      title: "Set Personality Traits",
+      description: "Use sliders to define personality traits that capture the essence of the person.",
+      imageSrc: "/images/personality-sliders-screenshot.png",
+      imageAlt: "Personality sliders screen" 
     },
     {
       icon: <MessageCircle className="h-10 w-10 text-white" />,
       title: "Connect & Share",
-      description: "Start meaningful conversations and share access with family members."
+      description: "Start meaningful conversations and share access with family members.",
+      imageSrc: "/images/demo-chat-screenshot.png",
+      imageAlt: "Demo chat screen"
     },
   ];
 
@@ -151,14 +148,14 @@ function HowItWorks() {
         
         <div className="max-w-5xl mx-auto">
           <div className="relative">
-            <div className="absolute top-0 bottom-0 left-1/2 -ml-[1px] w-0.5 bg-gradient-to-b from-forever-500 to-memory-600 hidden md:block"></div>
+            <div className="absolute top-0 bottom-0 left-1/2 -ml-[1px] w-0.5 bg-gradient-to-b from-primary to-secondary hidden md:block"></div>
             
             <div className="space-y-12 md:space-y-0 relative">
               {steps.map((step, index) => (
-                <div key={index} className="md:grid md:grid-cols-2 md:gap-8 items-center">
+                <div key={index} className="md:grid md:grid-cols-2 md:gap-8 items-center mb-16">
                   <div className={`md:text-right ${index % 2 === 1 ? 'md:order-1' : ''}`}>
                     <div className={`flex ${index % 2 === 1 ? 'md:justify-end' : ''}`}>
-                      <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-forever-600 to-memory-600 z-10">
+                      <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary z-10">
                         {step.icon}
                       </div>
                     </div>
@@ -167,10 +164,20 @@ function HowItWorks() {
                   </div>
                   
                   <div className={`mt-6 md:mt-0 ${index % 2 === 1 ? 'md:order-0' : ''}`}>
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 aspect-video flex items-center justify-center p-4">
-                      <div className="text-center text-gray-400">
-                        <p>Step {index + 1} Illustration</p>
-                        <p className="text-sm">Visual representation of the {step.title.toLowerCase()} process</p>
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                      <div className="bg-gray-100 aspect-video flex items-center justify-center">
+                        {step.imageSrc ? (
+                          <img 
+                            src={step.imageSrc} 
+                            alt={step.imageAlt}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center text-gray-400">
+                            <p>Step {index + 1} Illustration</p>
+                            <p className="text-sm">Visual representation of the {step.title.toLowerCase()} process</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
