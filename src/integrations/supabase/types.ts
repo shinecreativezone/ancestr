@@ -9,7 +9,145 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      avatars: {
+        Row: {
+          birth_place: string | null
+          created_at: string
+          ethnicity: string | null
+          first_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          photos: string[] | null
+          updated_at: string
+          user_id: string
+          year_of_birth: string | null
+          year_of_death: string | null
+        }
+        Insert: {
+          birth_place?: string | null
+          created_at?: string
+          ethnicity?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          photos?: string[] | null
+          updated_at?: string
+          user_id: string
+          year_of_birth?: string | null
+          year_of_death?: string | null
+        }
+        Update: {
+          birth_place?: string | null
+          created_at?: string
+          ethnicity?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          photos?: string[] | null
+          updated_at?: string
+          user_id?: string
+          year_of_birth?: string | null
+          year_of_death?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          avatar_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_avatar_id_fkey"
+            columns: ["avatar_id"]
+            isOneToOne: false
+            referencedRelation: "avatars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          id: string
+          role: string
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          id?: string
+          role: string
+          timestamp?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          id?: string
+          role?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatars_created: number | null
+          created_at: string
+          first_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatars_created?: number | null
+          created_at?: string
+          first_name?: string | null
+          gender?: string | null
+          id: string
+          last_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatars_created?: number | null
+          created_at?: string
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

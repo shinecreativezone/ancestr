@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@/components/PageLayout";
 import { Link } from "react-router-dom";
 import { ArrowRight, Heart, MessageCircle, Upload, VideoIcon, Mic, FileText, User, Image } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Index() {
   return (
@@ -18,14 +19,18 @@ export default function Index() {
 }
 
 function Hero() {
+  const { user } = useAuth();
+  
   return (
     <section className="relative pt-24 md:pt-32 pb-16 md:pb-24">
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <img 
-          src="https://images.unsplash.com/photo-1652085648070-d73935b6ff35?q=80&w=2481&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-          alt="Family memories" 
-          className="w-full h-full object-cover opacity-20"
-        />
+      <div className="absolute inset-0 z-0 overflow-hidden bg-gray-100">
+        <div className="w-full h-full">
+          <img 
+            src="https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+            alt="Family memories" 
+            className="w-full h-full object-cover opacity-20"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 to-background"></div>
       </div>
       
@@ -42,14 +47,14 @@ function Hero() {
             Create a digital twin of your loved ones to preserve their memories, stories, and personality for generations to come.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/avatar-type">
+            <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" variant="outline" className="text-lg px-6 h-14 font-medium">
-                Try the Demo
+                {user ? "Go to Dashboard" : "Sign In"}
               </Button>
             </Link>
-            <Link to="/waitlist">
+            <Link to={user ? "/avatar-type" : "/auth"}>
               <Button size="lg" className="text-lg px-6 h-14 font-medium btn-gradient">
-                Join Waitlist <ArrowRight className="ml-2 h-5 w-5" />
+                Create a Digital Twin <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>

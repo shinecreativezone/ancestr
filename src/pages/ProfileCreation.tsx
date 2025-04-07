@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +9,16 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Image, Plus, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { checkAvatarLimit, saveAvatarToDatabase } from "@/utils/avatarUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ProfileCreation() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const editAvatarId = searchParams.get('edit');
+  
   const [avatarType, setAvatarType] = useState<"self" | "loved_one">("self");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -23,17 +30,81 @@ export default function ProfileCreation() {
   const [currentPlace, setCurrentPlace] = useState("");
   const [ethnicity, setEthnicity] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Get avatar type from session storage (set on the previous page)
   useEffect(() => {
-    const storedType = sessionStorage.getItem("avatarType") as "self" | "loved_one";
-    if (!storedType) {
-      // If no avatar type is stored, redirect back to avatar type page
-      navigate("/avatar-type");
+    if (!user) {
+      navigate("/auth");
       return;
     }
-    setAvatarType(storedType);
-  }, [navigate]);
+    
+    const storedType = sessionStorage.getItem("avatarType") as "self" | "loved_one";
+    if (storedType && !editAvatarId) {
+      setAvatarType(storedType);
+    }
+    
+    // If editing an existing avatar, fetch its data
+    if (editAvatarId) {
+      setIsEditing(true);
+      fetchAvatarData(editAvatarId);
+    } else {
+      // If not editing, check if the user has reached the avatar limit
+      checkUserAvatarLimit();
+    }
+  }, [navigate, user, editAvatarId]);
+  
+  const fetchAvatarData = async (avatarId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("avatars")
+        .select("*")
+        .eq("id", avatarId)
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        setFirstName(data.first_name || "");
+        setLastName(data.last_name || "");
+        setGender(data.gender || "male");
+        setYearOfBirth(data.year_of_birth || "");
+        setYearOfDeath(data.year_of_death || "");
+        setBirthPlace(data.birth_place || "");
+        setEthnicity(data.ethnicity || "");
+        setImages(data.photos || []);
+        setAvatarType(data.year_of_death ? "loved_one" : "self");
+      }
+    } catch (error) {
+      console.error("Error fetching avatar data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load avatar data.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const checkUserAvatarLimit = async () => {
+    if (!user) return;
+    
+    try {
+      const canCreateMore = await checkAvatarLimit(user.id);
+      if (!canCreateMore) {
+        toast({
+          title: "Avatar Limit Reached",
+          description: "You can only create up to 2 digital twins. Please edit or delete an existing twin.",
+          variant: "destructive"
+        });
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error checking avatar limit:", error);
+    }
+  };
   
   const handleAddPlace = () => {
     if (currentPlace.trim() && !placesLived.includes(currentPlace.trim())) {
@@ -66,8 +137,18 @@ export default function ProfileCreation() {
     setImages(images.filter((_, i) => i !== index));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a digital twin.",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
+    }
     
     // Validate form inputs
     if (!firstName.trim()) {
@@ -88,31 +169,71 @@ export default function ProfileCreation() {
       return;
     }
     
-    // Store profile data in session storage
-    const profile = {
-      avatarType,
-      firstName,
-      lastName,
-      gender,
-      yearOfBirth,
-      yearOfDeath,
-      birthPlace,
-      placesLived,
-      ethnicity,
-      imageCount: images.length,
-      photos: images
-    };
+    setLoading(true);
     
-    sessionStorage.setItem("avatarProfile", JSON.stringify(profile));
-    
-    // Show success message
-    toast({
-      title: "Profile saved!",
-      description: "Proceeding to personality assessment."
-    });
-    
-    // Navigate to personality sliders page
-    navigate("/personality-sliders");
+    try {
+      const avatarData = {
+        firstName,
+        lastName,
+        gender,
+        yearOfBirth,
+        yearOfDeath,
+        birthPlace,
+        placesLived,
+        ethnicity,
+        photos: images
+      };
+      
+      // Save to session storage
+      sessionStorage.setItem("avatarProfile", JSON.stringify(avatarData));
+      
+      if (isEditing && editAvatarId) {
+        // Update existing avatar
+        const { error } = await supabase
+          .from("avatars")
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            gender,
+            year_of_birth: yearOfBirth,
+            year_of_death: yearOfDeath,
+            birth_place: birthPlace,
+            ethnicity,
+            photos: images,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", editAvatarId);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Avatar updated!",
+          description: "Your digital twin has been updated successfully."
+        });
+        
+        navigate("/dashboard");
+      } else {
+        // Create new avatar
+        await saveAvatarToDatabase(user.id, avatarData);
+        
+        toast({
+          title: "Profile saved!",
+          description: "Your digital twin has been created successfully."
+        });
+        
+        // Navigate to personality sliders page for new avatars
+        navigate("/personality-sliders");
+      }
+    } catch (error: any) {
+      console.error("Error saving avatar:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save your digital twin.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
   return (
@@ -121,7 +242,11 @@ export default function ProfileCreation() {
         <div className="container max-w-3xl mx-auto">
           <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              {avatarType === "self" ? "Create Your Profile" : "Create Your Loved One's Profile"}
+              {isEditing 
+                ? "Edit Digital Twin" 
+                : avatarType === "self" 
+                  ? "Create Your Profile" 
+                  : "Create Your Loved One's Profile"}
             </h1>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Let's collect some basic information to get started with your avatar.
@@ -325,11 +450,17 @@ export default function ProfileCreation() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate("/avatar-type")}
+                onClick={() => isEditing ? navigate("/dashboard") : navigate("/avatar-type")}
               >
                 Back
               </Button>
-              <Button type="submit" className="bg-[#1F4959] hover:bg-[#011425]">Continue to Personality</Button>
+              <Button 
+                type="submit" 
+                className="bg-[#1F4959] hover:bg-[#011425]"
+                disabled={loading}
+              >
+                {loading ? "Saving..." : isEditing ? "Save Changes" : "Continue to Personality"}
+              </Button>
             </div>
           </form>
         </div>

@@ -2,98 +2,203 @@
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Send, Mic, Menu, Phone, X, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { getInitials } from "@/utils/avatarUtils";
+import { toast } from "@/hooks/use-toast";
 
 export default function DemoChat() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const avatarId = searchParams.get('id');
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [avatarProfile, setAvatarProfile] = useState<any>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   
-  // Check if user came from the twins/upload page or dashboard
   useEffect(() => {
-    const hasCompletedSetup = sessionStorage.getItem("personalityProfile") || 
-                             sessionStorage.getItem("contributionCode");
-    
-    // If the user hasn't gone through the flow, redirect them to the avatar type page
-    if (!hasCompletedSetup) {
-      navigate("/avatar-type");
-      return;
-    }
-    
-    // Get the avatar profile from session storage
-    const storedProfile = sessionStorage.getItem("avatarProfile");
-    if (storedProfile) {
-      const profile = JSON.parse(storedProfile);
-      setAvatarProfile(profile);
+    const fetchAvatar = async () => {
+      if (!user || !avatarId) {
+        return;
+      }
       
-      // Add initial message based on the avatar's name
-      const displayName = profile.firstName ? 
-        `${profile.firstName}${profile.lastName ? ' ' + profile.lastName : ''}` : 
-        'Grandma Mae';
-      
-      setMessages([
-        { 
-          id: 1, 
-          role: 'twin' as const, 
-          content: `Hello, dear. It's ${profile.firstName || 'Grandma Mae'} here. It's so nice to see you. What would you like to talk about today?`,
-          timestamp: new Date().toISOString()
+      try {
+        // Fetch avatar details
+        const { data: avatar, error } = await supabase
+          .from("avatars")
+          .select("*")
+          .eq("id", avatarId)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching avatar:", error);
+          return;
         }
-      ]);
-    } else {
-      // Add default initial message if no profile is found
-      setMessages([
-        { 
-          id: 1, 
-          role: 'twin' as const, 
-          content: "Hello, dear. It's so nice to see you. What would you like to talk about today?",
-          timestamp: new Date().toISOString()
+        
+        if (!avatar) {
+          toast({
+            title: "Avatar not found",
+            description: "The requested digital twin could not be found.",
+            variant: "destructive"
+          });
+          navigate("/dashboard");
+          return;
         }
-      ]);
-    }
-  }, [navigate]);
+        
+        setAvatarProfile(avatar);
+        
+        // Check for existing conversation or create a new one
+        const { data: conversations, error: convoError } = await supabase
+          .from("conversations")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("avatar_id", avatarId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+          
+        if (convoError) {
+          console.error("Error fetching conversation:", convoError);
+        }
+        
+        let convoId = null;
+        if (conversations && conversations.length > 0) {
+          convoId = conversations[0].id;
+          setConversationId(convoId);
+          
+          // Fetch previous messages
+          const { data: pastMessages, error: messagesError } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("conversation_id", convoId)
+            .order("timestamp", { ascending: true });
+            
+          if (messagesError) {
+            console.error("Error fetching messages:", messagesError);
+          }
+          
+          if (pastMessages && pastMessages.length > 0) {
+            const formattedMessages = pastMessages.map((msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp
+            }));
+            
+            setMessages(formattedMessages);
+            return;
+          }
+        }
+        
+        // Add initial message if no previous conversation
+        const displayName = avatar.first_name ? 
+          `${avatar.first_name}${avatar.last_name ? ' ' + avatar.last_name : ''}` : 
+          'Grandma Mae';
+        
+        setMessages([
+          { 
+            id: 1, 
+            role: 'twin' as const, 
+            content: `Hello, dear. It's ${avatar.first_name || 'Grandma Mae'} here. It's so nice to see you. What would you like to talk about today?`,
+            timestamp: new Date().toISOString()
+          }
+        ]);
+        
+      } catch (error) {
+        console.error("Error in initialization:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem loading the chat.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchAvatar();
+  }, [user, avatarId, navigate]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !user || !avatarProfile) return;
     
     // Add user message
     const userMessage: Message = {
-      id: messages.length + 1,
+      id: Date.now(),
       role: 'user' as const,
       content: inputValue,
       timestamp: new Date().toISOString()
     };
     
-    setMessages([...messages, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInputValue("");
     setIsSending(true);
     
-    // Simulate AI response
-    setTimeout(() => {
-      const twinResponses = [
-        "I remember when you were little, you would always ask me to tell you stories about my childhood. Do you still enjoy those stories?",
-        "That reminds me of the summer we spent at the lake house. Remember how we would watch the sunrise together?",
-        "Family has always been the most important thing to me. I'm so proud of the person you've become.",
-        "I wish I could be there for all your special moments, but know that I'm always with you in spirit.",
-        "Tell me more about your life now. What brings you joy these days?"
-      ];
+    try {
+      // Get the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No session found");
+      }
       
-      const randomResponse = twinResponses[Math.floor(Math.random() * twinResponses.length)];
+      // Format previous messages for context
+      const pastMessages = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
       
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke("chat-with-twin", {
+        body: {
+          message: userMessage.content,
+          avatarId: avatarProfile.id,
+          conversationId: conversationId,
+          pastMessages: pastMessages
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update conversation ID if this is a new conversation
+      if (data.conversationId && !conversationId) {
+        setConversationId(data.conversationId);
+      }
+      
+      // Add AI response to messages
       const twinMessage: Message = {
-        id: messages.length + 2,
+        id: Date.now() + 1,
         role: 'twin' as const,
-        content: randomResponse,
-        timestamp: new Date().toISOString()
+        content: data.message,
+        timestamp: data.timestamp || new Date().toISOString()
       };
       
       setMessages(prev => [...prev, twinMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Error sending message",
+        description: "There was a problem communicating with your digital twin.",
+        variant: "destructive"
+      });
+      
+      // Add a fallback message if the API call fails
+      const fallbackMessage: Message = {
+        id: Date.now() + 1,
+        role: 'twin' as const,
+        content: "I'm sorry, I'm having trouble responding right now. Please try again later.",
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, fallbackMessage]);
+    } finally {
       setIsSending(false);
-    }, 1500);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -103,17 +208,9 @@ export default function DemoChat() {
     }
   };
   
-  const displayName = avatarProfile?.firstName ? 
-    `${avatarProfile.firstName}${avatarProfile.lastName ? ' ' + avatarProfile.lastName : ''}` : 
+  const displayName = avatarProfile?.first_name ? 
+    `${avatarProfile.first_name}${avatarProfile.last_name ? ' ' + avatarProfile.last_name : ''}` : 
     'Grandma Mae';
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  };
 
   return (
     <PageLayout>
@@ -136,7 +233,7 @@ export default function DemoChat() {
               
               <div className="flex flex-col items-center py-8">
                 <Avatar className="w-32 h-32 mb-4 bg-[#5C7C89]">
-                  {avatarProfile?.photos?.length > 0 ? (
+                  {avatarProfile?.photos?.[0] ? (
                     <AvatarImage src={avatarProfile.photos[0]} alt={displayName} />
                   ) : null}
                   <AvatarFallback className="text-3xl font-semibold bg-[#5C7C89] text-white">
@@ -157,24 +254,24 @@ export default function DemoChat() {
                         </div>
                       )}
                       
-                      {avatarProfile.yearOfBirth && (
+                      {avatarProfile.year_of_birth && (
                         <div className="flex justify-between">
                           <span className="text-gray-500">Birth Year:</span>
-                          <span className="font-medium">{avatarProfile.yearOfBirth}</span>
+                          <span className="font-medium">{avatarProfile.year_of_birth}</span>
                         </div>
                       )}
                       
-                      {avatarProfile.yearOfDeath && (
+                      {avatarProfile.year_of_death && (
                         <div className="flex justify-between">
                           <span className="text-gray-500">Death Year:</span>
-                          <span className="font-medium">{avatarProfile.yearOfDeath}</span>
+                          <span className="font-medium">{avatarProfile.year_of_death}</span>
                         </div>
                       )}
                       
-                      {avatarProfile.birthPlace && (
+                      {avatarProfile.birth_place && (
                         <div className="flex justify-between">
                           <span className="text-gray-500">Birthplace:</span>
-                          <span className="font-medium">{avatarProfile.birthPlace}</span>
+                          <span className="font-medium">{avatarProfile.birth_place}</span>
                         </div>
                       )}
                     </div>
@@ -216,7 +313,7 @@ export default function DemoChat() {
                     <div>
                       <label className="text-sm text-gray-600 block mb-1">Time Period</label>
                       <select className="w-full p-2 border border-gray-300 rounded">
-                        <option>Current (Age {new Date().getFullYear() - Number(avatarProfile?.yearOfBirth || 1945)})</option>
+                        <option>Current (Age {new Date().getFullYear() - Number(avatarProfile?.year_of_birth || 1945)})</option>
                         <option>Middle Age (50s)</option>
                         <option>Young Adult (20s)</option>
                       </select>
@@ -300,7 +397,7 @@ export default function DemoChat() {
               <div className="bg-gray-50 p-4 border-t border-gray-100">
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-gray-500">
-                    This is a demo with limited capabilities.
+                    Chat with your digital twin
                   </div>
                   <div className="flex space-x-3">
                     <Button variant="outline" size="sm">
