@@ -1,201 +1,238 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-// Define CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Verify JWT token in request
-    const authHeader = req.headers.get("Authorization");
+    // Get the request body
+    const body = await req.json();
+    const { message, avatarId, conversationId, pastMessages } = body;
+
+    // Validate required parameters
+    if (!message) {
+      return new Response(JSON.stringify({ error: 'Message is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!avatarId) {
+      return new Response(JSON.stringify({ error: 'Avatar ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get the JWT token from the request
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: 'Authorization header is required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-    
-    const token = authHeader.replace("Bearer ", "");
+
+    const token = authHeader.replace('Bearer ', '');
+
+    // Initialize the Supabase client with the service role key
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify the JWT token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Parse request body
-    const { message, avatarId, conversationId, pastMessages } = await req.json();
-    
-    if (!message || !avatarId) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Get avatar details to personalize the AI response
-    const { data: avatar } = await supabase
-      .from("avatars")
-      .select("*")
-      .eq("id", avatarId)
+    const userId = user.id;
+
+    // Get the avatar data
+    const { data: avatar, error: avatarError } = await supabase
+      .from('avatars')
+      .select('*')
+      .eq('id', avatarId)
       .single();
-      
-    if (!avatar) {
-      return new Response(
-        JSON.stringify({ error: "Avatar not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Construct the system prompt with the avatar's characteristics
-    const firstName = avatar.first_name || "Your loved one";
-    const lastName = avatar.last_name || "";
-    const fullName = `${firstName} ${lastName}`.trim();
-    const gender = avatar.gender || "person";
-    const birthYear = avatar.year_of_birth || "";
-    const deathYear = avatar.year_of_death || "";
-    const birthPlace = avatar.birth_place || "";
-    const ethnicity = avatar.ethnicity || "";
-    
-    let ageDescription = "";
-    const currentYear = new Date().getFullYear();
-    if (birthYear) {
-      if (deathYear) {
-        ageDescription = `lived from ${birthYear} to ${deathYear}`;
-      } else {
-        const age = currentYear - parseInt(birthYear);
-        ageDescription = `is ${age} years old`;
-      }
-    }
-    
-    const systemPrompt = `You are ${fullName}, a ${ethnicity} ${gender} who ${ageDescription}${birthPlace ? ` and was born in ${birthPlace}` : ''}. 
-    Speak in the first person as if you are this person talking to someone you care about deeply.
-    Be warm, personable, and authentic. Share stories, memories, and wisdom as this person would.
-    If you don't know something specific, be honest about it rather than making up detailed facts,
-    but stay in character as ${firstName}.`;
 
-    // Format the conversation history for OpenAI
-    const formattedMessages = [
-      { role: "system", content: systemPrompt },
+    if (avatarError || !avatar) {
+      return new Response(JSON.stringify({ error: 'Avatar not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify that the avatar belongs to the user
+    if (avatar.user_id !== userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized to access this avatar' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let convoId = conversationId;
+    // Create a new conversation if one doesn't exist
+    if (!convoId) {
+      const { data: newConvo, error: convoError } = await supabase
+        .from('conversations')
+        .insert([
+          {
+            user_id: userId,
+            avatar_id: avatarId,
+          },
+        ])
+        .select()
+        .single();
+
+      if (convoError) {
+        return new Response(JSON.stringify({ error: 'Failed to create conversation' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      convoId = newConvo.id;
+    }
+
+    // Save the user message to the database
+    const timestamp = new Date().toISOString();
+    const { error: msgError } = await supabase
+      .from('messages')
+      .insert([
+        {
+          conversation_id: convoId,
+          role: 'user',
+          content: message,
+          timestamp,
+        },
+      ]);
+
+    if (msgError) {
+      console.error('Error saving user message:', msgError);
+    }
+
+    // Prepare the AI response
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create a system prompt based on the avatar's profile
+    const firstName = avatar.first_name || 'Grandma';
+    const lastName = avatar.last_name || 'Mae';
+    const displayName = `${firstName} ${lastName}`.trim();
+    const gender = avatar.gender || 'female';
+    const yearOfBirth = avatar.year_of_birth || '1945';
+    const yearOfDeath = avatar.year_of_death || '';
+    const birthPlace = avatar.birth_place || 'Unknown';
+    const ethnicity = avatar.ethnicity || '';
+
+    const currentYear = new Date().getFullYear();
+    const age = yearOfDeath 
+      ? `${parseInt(yearOfDeath) - parseInt(yearOfBirth)}`
+      : `${currentYear - parseInt(yearOfBirth)}`;
+
+    const systemPrompt = `You are ${displayName}, a ${gender === 'female' ? 'woman' : gender === 'male' ? 'man' : 'person'} born in ${yearOfBirth} ${yearOfDeath ? `who passed away in ${yearOfDeath}` : ''}. 
+You are ${age} years old. You were born in ${birthPlace}${ethnicity ? ` and your ethnicity is ${ethnicity}` : ''}.
+You should respond as if you are this person, with their life experiences and perspective.
+Your responses should be conversational, warm, and reflect the personality of someone from your generation.
+Keep responses relatively brief and engaging.`;
+
+    // Format the message history
+    const messages = [
+      { role: 'system', content: systemPrompt },
     ];
-    
+
     // Add past messages if available
     if (pastMessages && pastMessages.length > 0) {
-      pastMessages.forEach((msg: { role: string; content: string }) => {
-        formattedMessages.push({
-          role: msg.role === "twin" ? "assistant" : "user",
-          content: msg.content
+      pastMessages.forEach(msg => {
+        messages.push({
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content,
         });
       });
     }
-    
+
     // Add the current message
-    formattedMessages.push({ role: "user", content: message });
-    
-    // Make OpenAI API request
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+    messages.push({ role: 'user', content: message });
+
+    // Call the OpenAI API
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: formattedMessages,
+        model: 'gpt-3.5-turbo',
+        messages,
         temperature: 0.7,
         max_tokens: 500,
       }),
     });
-    
-    const openaiData = await openaiResponse.json();
-    
-    if (!openaiData.choices || openaiData.choices.length === 0) {
-      console.error("OpenAI API error:", openaiData);
-      return new Response(
-        JSON.stringify({ error: "Failed to generate response" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+    if (!openAIResponse.ok) {
+      const errorData = await openAIResponse.json();
+      console.error('OpenAI API error:', errorData);
+      throw new Error('Failed to get response from OpenAI');
     }
-    
-    const aiResponse = openaiData.choices[0].message.content;
-    
-    // Store the message in the database
-    let convoId = conversationId;
-    
-    // If no conversation ID was provided, create a new conversation
-    if (!convoId) {
-      const { data: newConversation, error: convoError } = await supabase
-        .from("conversations")
-        .insert([{ user_id: user.id, avatar_id: avatarId }])
-        .select()
-        .single();
-        
-      if (convoError || !newConversation) {
-        return new Response(
-          JSON.stringify({ error: "Failed to create conversation" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      convoId = newConversation.id;
+
+    const openAIData = await openAIResponse.json();
+    const aiMessage = openAIData.choices[0].message.content;
+    const responseTimestamp = new Date().toISOString();
+
+    // Save the AI response to the database
+    const { error: aiMsgError } = await supabase
+      .from('messages')
+      .insert([
+        {
+          conversation_id: convoId,
+          role: 'twin',
+          content: aiMessage,
+          timestamp: responseTimestamp,
+        },
+      ]);
+
+    if (aiMsgError) {
+      console.error('Error saving AI message:', aiMsgError);
     }
-    
-    // Store the user message
-    await supabase
-      .from("messages")
-      .insert([{
-        conversation_id: convoId,
-        role: "user",
-        content: message,
-      }]);
-      
-    // Store the AI response
-    const { data: savedMessage, error: messageError } = await supabase
-      .from("messages")
-      .insert([{
-        conversation_id: convoId,
-        role: "twin",
-        content: aiResponse,
-      }])
-      .select()
-      .single();
-      
-    if (messageError) {
-      console.error("Error saving message:", messageError);
-    }
-    
+
+    // Return the AI response
     return new Response(
       JSON.stringify({
-        message: aiResponse,
+        message: aiMessage,
         conversationId: convoId,
-        timestamp: savedMessage ? savedMessage.timestamp : new Date().toISOString(),
+        timestamp: responseTimestamp,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
     );
-    
+
   } catch (error) {
-    console.error("Error in chat-with-twin function:", error);
+    console.error('Error in chat function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
     );
   }
 });

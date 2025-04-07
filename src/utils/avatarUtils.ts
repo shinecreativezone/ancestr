@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar } from "@/types/supabase";
 
 export const checkAvatarLimit = async (userId: string): Promise<boolean> => {
   try {
@@ -51,7 +52,7 @@ export const saveAvatarToDatabase = async (userId: string, avatarData: any) => {
   }
 };
 
-export const getUserAvatars = async (userId: string) => {
+export const getUserAvatars = async (userId: string): Promise<Avatar[]> => {
   try {
     const { data, error } = await supabase
       .from("avatars")

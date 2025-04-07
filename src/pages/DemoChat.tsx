@@ -1,4 +1,3 @@
-
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -9,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getInitials } from "@/utils/avatarUtils";
 import { toast } from "@/hooks/use-toast";
+import { Avatar as AvatarType, Conversation, Message as MessageType } from "@/types/supabase";
 
 export default function DemoChat() {
   const navigate = useNavigate();
@@ -16,11 +16,11 @@ export default function DemoChat() {
   const [searchParams] = useSearchParams();
   const avatarId = searchParams.get('id');
   
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [avatarProfile, setAvatarProfile] = useState<any>(null);
+  const [avatarProfile, setAvatarProfile] = useState<AvatarType | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   
   useEffect(() => {
@@ -84,14 +84,7 @@ export default function DemoChat() {
           }
           
           if (pastMessages && pastMessages.length > 0) {
-            const formattedMessages = pastMessages.map((msg: any) => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp
-            }));
-            
-            setMessages(formattedMessages);
+            setMessages(pastMessages);
             return;
           }
         }
@@ -103,10 +96,11 @@ export default function DemoChat() {
         
         setMessages([
           { 
-            id: 1, 
-            role: 'twin' as const, 
+            id: '1', 
+            role: 'twin', 
             content: `Hello, dear. It's ${avatar.first_name || 'Grandma Mae'} here. It's so nice to see you. What would you like to talk about today?`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            conversation_id: convoId || ''
           }
         ]);
         
@@ -127,11 +121,12 @@ export default function DemoChat() {
     if (!inputValue.trim() || !user || !avatarProfile) return;
     
     // Add user message
-    const userMessage: Message = {
-      id: Date.now(),
-      role: 'user' as const,
+    const userMessage: MessageType = {
+      id: Date.now().toString(),
+      role: 'user',
       content: inputValue,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      conversation_id: conversationId || ''
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -171,11 +166,12 @@ export default function DemoChat() {
       }
       
       // Add AI response to messages
-      const twinMessage: Message = {
-        id: Date.now() + 1,
-        role: 'twin' as const,
+      const twinMessage: MessageType = {
+        id: (Date.now() + 1).toString(),
+        role: 'twin',
         content: data.message,
-        timestamp: data.timestamp || new Date().toISOString()
+        timestamp: data.timestamp || new Date().toISOString(),
+        conversation_id: data.conversationId || conversationId || ''
       };
       
       setMessages(prev => [...prev, twinMessage]);
@@ -188,11 +184,12 @@ export default function DemoChat() {
       });
       
       // Add a fallback message if the API call fails
-      const fallbackMessage: Message = {
-        id: Date.now() + 1,
-        role: 'twin' as const,
+      const fallbackMessage: MessageType = {
+        id: (Date.now() + 1).toString(),
+        role: 'twin',
         content: "I'm sorry, I'm having trouble responding right now. Please try again later.",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        conversation_id: conversationId || ''
       };
       
       setMessages(prev => [...prev, fallbackMessage]);
@@ -418,10 +415,3 @@ export default function DemoChat() {
     </PageLayout>
   );
 }
-
-type Message = {
-  id: number;
-  role: 'user' | 'twin';
-  content: string;
-  timestamp: string;
-};

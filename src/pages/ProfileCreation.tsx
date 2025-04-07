@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { checkAvatarLimit, saveAvatarToDatabase } from "@/utils/avatarUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar } from "@/types/supabase";
 
 export default function ProfileCreation() {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ export default function ProfileCreation() {
       if (data) {
         setFirstName(data.first_name || "");
         setLastName(data.last_name || "");
-        setGender(data.gender || "male");
+        setGender(data.gender as "male" | "female" | "other" || "male");
         setYearOfBirth(data.year_of_birth || "");
         setYearOfDeath(data.year_of_death || "");
         setBirthPlace(data.birth_place || "");
