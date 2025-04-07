@@ -4,20 +4,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LogoUpdated } from "./LogoUpdated";
-import { useAuth } from "@/contexts/AuthContext";
 
 export function NavigationBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { user } = useAuth();
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
       <div className="container flex justify-between items-center py-4">
-        <LogoUpdated />
+        <Link to="/" className="flex items-center space-x-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-warmth-500 to-memory-600 flex items-center justify-center">
+            <span className="text-white font-bold text-lg">A</span>
+          </div>
+          <span className="font-serif font-bold text-xl text-gray-900">Ancestr</span>
+        </Link>
         
         {isMobile ? (
           <button onClick={toggleMenu} className="text-gray-700">
@@ -27,20 +29,12 @@ export function NavigationBar() {
           <nav className="flex items-center space-x-8">
             <NavLinks />
             <div className="flex items-center space-x-3">
-              {user ? (
-                <Link to="/dashboard">
-                  <Button className="bg-[#1F4959] hover:bg-[#011425]">Dashboard</Button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/avatar-type">
-                    <Button variant="outline" className="font-medium">Try Demo</Button>
-                  </Link>
-                  <Link to="/auth">
-                    <Button className="bg-[#1F4959] hover:bg-[#011425]">Login</Button>
-                  </Link>
-                </>
-              )}
+              <Link to="/avatar-type">
+                <Button variant="outline" className="font-medium">Try Demo</Button>
+              </Link>
+              <Link to="/waitlist">
+                <Button className="btn-gradient">Join Waitlist</Button>
+              </Link>
             </div>
           </nav>
         )}
@@ -52,20 +46,12 @@ export function NavigationBar() {
           <nav className="container flex flex-col py-8 space-y-6">
             <NavLinks mobile />
             <div className="flex flex-col space-y-3 pt-4">
-              {user ? (
-                <Link to="/dashboard" onClick={toggleMenu}>
-                  <Button className="w-full bg-[#1F4959] hover:bg-[#011425]">Dashboard</Button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/avatar-type" onClick={toggleMenu}>
-                    <Button variant="outline" className="w-full">Try Demo</Button>
-                  </Link>
-                  <Link to="/auth" onClick={toggleMenu}>
-                    <Button className="w-full bg-[#1F4959] hover:bg-[#011425]">Login</Button>
-                  </Link>
-                </>
-              )}
+              <Link to="/avatar-type" onClick={toggleMenu}>
+                <Button variant="outline" className="w-full">Try Demo</Button>
+              </Link>
+              <Link to="/waitlist" onClick={toggleMenu}>
+                <Button className="w-full btn-gradient">Join Waitlist</Button>
+              </Link>
             </div>
           </nav>
         </div>

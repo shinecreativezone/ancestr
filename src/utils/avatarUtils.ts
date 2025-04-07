@@ -52,42 +52,6 @@ export const saveAvatarToDatabase = async (userId: string, avatarData: any) => {
   }
 };
 
-export const generateAvatarHeadshot = async (avatarId: string, photos: string[]): Promise<string | null> => {
-  try {
-    if (!photos || photos.length === 0) {
-      return null;
-    }
-    
-    const { data, error } = await supabase.functions.invoke('generate-headshot', {
-      body: { photos }
-    });
-    
-    if (error) {
-      console.error("Error generating headshot:", error);
-      return null;
-    }
-    
-    if (data.imageUrl) {
-      // Update the avatar with the composite image
-      const { error: updateError } = await supabase
-        .from("avatars")
-        .update({ composite_image: data.imageUrl })
-        .eq("id", avatarId);
-        
-      if (updateError) {
-        console.error("Error updating avatar with composite image:", updateError);
-      }
-      
-      return data.imageUrl;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Error generating headshot:", error);
-    return null;
-  }
-};
-
 export const getUserAvatars = async (userId: string): Promise<Avatar[]> => {
   try {
     const { data, error } = await supabase
@@ -114,26 +78,4 @@ export const getInitials = (name: string) => {
     .map(part => part[0])
     .join('')
     .toUpperCase();
-};
-
-export const textToSpeech = async (text: string, avatarProfile: any, settings?: any): Promise<string | null> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('text-to-speech', {
-      body: { text, avatarProfile, settings }
-    });
-    
-    if (error) {
-      console.error("Error converting text to speech:", error);
-      return null;
-    }
-    
-    if (data.audioData) {
-      return `data:audio/mp3;base64,${data.audioData}`;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Error with text-to-speech:", error);
-    return null;
-  }
 };

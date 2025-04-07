@@ -10,7 +10,6 @@ export type Avatar = {
   birth_place: string | null;
   ethnicity: string | null;
   photos: string[] | null;
-  composite_image?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -39,9 +38,4 @@ export type Profile = {
   avatars_created: number | null;
   created_at: string;
   updated_at: string;
-};
-
-export type TwinSettings = {
-  timePeriod: 'current' | 'middleAge' | 'youngAdult';
-  emotionalState: 'neutral' | 'happy' | 'reflective' | 'nostalgic';
 };
