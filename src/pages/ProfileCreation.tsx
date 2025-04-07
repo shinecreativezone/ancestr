@@ -6,12 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Image, Plus, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function ProfileCreation() {
   const navigate = useNavigate();
   const [avatarType, setAvatarType] = useState<"self" | "loved_one">("self");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "other">("male");
   const [yearOfBirth, setYearOfBirth] = useState("");
   const [yearOfDeath, setYearOfDeath] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
@@ -66,6 +70,15 @@ export default function ProfileCreation() {
     e.preventDefault();
     
     // Validate form inputs
+    if (!firstName.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter a first name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!yearOfBirth.trim()) {
       toast({
         title: "Missing information",
@@ -78,12 +91,16 @@ export default function ProfileCreation() {
     // Store profile data in session storage
     const profile = {
       avatarType,
+      firstName,
+      lastName,
+      gender,
       yearOfBirth,
       yearOfDeath,
       birthPlace,
       placesLived,
       ethnicity,
-      imageCount: images.length
+      imageCount: images.length,
+      photos: images
     };
     
     sessionStorage.setItem("avatarProfile", JSON.stringify(profile));
@@ -161,6 +178,53 @@ export default function ProfileCreation() {
                   
                   <div className="space-y-4">
                     <h2 className="text-xl font-medium mb-4">Basic Information</h2>
+                    
+                    {/* Name fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name*</Label>
+                        <Input
+                          id="firstName"
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required
+                          placeholder="e.g. John"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="e.g. Smith"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Gender field */}
+                    <div className="space-y-2">
+                      <Label>Gender</Label>
+                      <RadioGroup value={gender} onValueChange={(value) => setGender(value as "male" | "female" | "other")}>
+                        <div className="flex space-x-6">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="male" id="male" />
+                            <Label htmlFor="male" className="cursor-pointer">Male</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="female" id="female" />
+                            <Label htmlFor="female" className="cursor-pointer">Female</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="other" id="other" />
+                            <Label htmlFor="other" className="cursor-pointer">Other</Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -265,7 +329,7 @@ export default function ProfileCreation() {
               >
                 Back
               </Button>
-              <Button type="submit">Continue to Personality</Button>
+              <Button type="submit" className="bg-[#1F4959] hover:bg-[#011425]">Continue to Personality</Button>
             </div>
           </form>
         </div>

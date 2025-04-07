@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mic, Image, FileText, MessageSquare, MessageCircle, ArrowRight, CheckCircle } from "lucide-react";
+import { User, Mic, Image as ImageIcon, FileText, MessageSquare, MessageCircle, ArrowRight, CheckCircle } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -68,6 +69,18 @@ export default function Dashboard() {
     );
   }
   
+  const displayName = avatarProfile?.firstName ? 
+    `${avatarProfile.firstName}${avatarProfile.lastName ? ' ' + avatarProfile.lastName : ''}` : 
+    'Your';
+    
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+  
   return (
     <PageLayout>
       <div className="pt-24 pb-16">
@@ -78,7 +91,7 @@ export default function Dashboard() {
                 <h1 className="text-3xl font-bold mb-2">
                   {isContribution ? 
                     "Contribution Dashboard" : 
-                    `${avatarProfile?.firstName || 'Your'}'s Avatar`}
+                    `${displayName}'s Avatar`}
                 </h1>
                 <p className="text-gray-600">
                   {isContribution ? 
@@ -88,8 +101,8 @@ export default function Dashboard() {
               </div>
               
               <Link to="/demo-chat">
-                <Button className="btn-gradient">
-                  Chat with Avatar <MessageCircle className="ml-2 h-4 w-4" />
+                <Button className="bg-[#1F4959] hover:bg-[#011425]">
+                  Chat with {displayName} <MessageCircle className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -98,34 +111,52 @@ export default function Dashboard() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5 text-forever-500" /> Profile
+                    <User className="h-5 w-5 text-[#1F4959]" /> Profile
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {avatarProfile ? (
                     <div className="space-y-3">
+                      <div className="flex justify-center mb-4">
+                        <Avatar className="w-20 h-20 bg-[#5C7C89]">
+                          {avatarProfile?.photos?.length > 0 ? (
+                            <AvatarImage src={avatarProfile.photos[0]} alt={displayName} />
+                          ) : null}
+                          <AvatarFallback className="text-xl font-semibold bg-[#5C7C89] text-white">
+                            {getInitials(displayName)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="text-gray-500">Name:</div>
-                        <div className="font-medium">{avatarProfile.firstName} {avatarProfile.lastName}</div>
+                        <div className="font-medium">{displayName}</div>
                         
-                        {avatarProfile.birthYear && (
+                        {avatarProfile.gender && (
+                          <>
+                            <div className="text-gray-500">Gender:</div>
+                            <div className="font-medium capitalize">{avatarProfile.gender}</div>
+                          </>
+                        )}
+                        
+                        {avatarProfile.yearOfBirth && (
                           <>
                             <div className="text-gray-500">Birth Year:</div>
-                            <div className="font-medium">{avatarProfile.birthYear}</div>
+                            <div className="font-medium">{avatarProfile.yearOfBirth}</div>
                           </>
                         )}
                         
-                        {avatarProfile.deathYear && (
+                        {avatarProfile.yearOfDeath && (
                           <>
                             <div className="text-gray-500">Death Year:</div>
-                            <div className="font-medium">{avatarProfile.deathYear || "N/A"}</div>
+                            <div className="font-medium">{avatarProfile.yearOfDeath || "N/A"}</div>
                           </>
                         )}
                         
-                        {avatarProfile.birthplace && (
+                        {avatarProfile.birthPlace && (
                           <>
                             <div className="text-gray-500">Birthplace:</div>
-                            <div className="font-medium">{avatarProfile.birthplace}</div>
+                            <div className="font-medium">{avatarProfile.birthPlace}</div>
                           </>
                         )}
                         
@@ -141,9 +172,11 @@ export default function Dashboard() {
                         <div className="mt-4">
                           <p className="text-sm text-gray-500 mb-2">Photos:</p>
                           <div className="flex gap-2 overflow-x-auto pb-2">
-                            {[...Array(Math.min(avatarProfile.photos.length, 3))].map((_, i) => (
-                              <div key={i} className="w-12 h-12 rounded-md bg-gray-200 flex-shrink-0"></div>
-                            ))}
+                            {avatarProfile.photos.map((photo: string, i: number) => (
+                              <div key={i} className="w-12 h-12 rounded-md bg-gray-200 flex-shrink-0 overflow-hidden">
+                                <img src={photo} alt={`Upload ${i + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            )).slice(0, 3)}
                             {avatarProfile.photos.length > 3 && (
                               <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
                                 +{avatarProfile.photos.length - 3}
@@ -162,7 +195,7 @@ export default function Dashboard() {
                   )}
                 </CardContent>
                 <CardFooter className="pt-0">
-                  <Link to="/profile-creation" className="text-sm text-forever-600 hover:underline w-full text-right">
+                  <Link to="/profile-creation" className="text-sm text-[#1F4959] hover:underline w-full text-right">
                     {avatarProfile ? "Edit profile" : "Create profile"}
                   </Link>
                 </CardFooter>
@@ -171,7 +204,7 @@ export default function Dashboard() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5 text-memory-500" /> Personality
+                    <User className="h-5 w-5 text-[#5C7C89]" /> Personality
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -189,7 +222,7 @@ export default function Dashboard() {
                           </div>
                           <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-forever-500 to-memory-500" 
+                              className="h-full bg-gradient-to-r from-[#1F4959] to-[#5C7C89]" 
                               style={{ width: `${value * 100}%` }}
                             ></div>
                           </div>
@@ -203,7 +236,7 @@ export default function Dashboard() {
                   )}
                 </CardContent>
                 <CardFooter className="pt-0">
-                  <Link to="/personality-sliders" className="text-sm text-memory-600 hover:underline w-full text-right">
+                  <Link to="/personality-sliders" className="text-sm text-[#5C7C89] hover:underline w-full text-right">
                     {personalityProfile ? "Edit personality" : "Define personality"}
                   </Link>
                 </CardFooter>
@@ -212,14 +245,14 @@ export default function Dashboard() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Mic className="h-5 w-5 text-warmth-500" /> Data Sources
+                    <Mic className="h-5 w-5 text-[#011425]" /> Data Sources
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm flex items-center gap-2">
-                        <Image className="h-4 w-4 text-gray-500" /> Photos
+                        <ImageIcon className="h-4 w-4 text-gray-500" /> Photos
                       </span>
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                         {avatarProfile?.photos?.length || 0} uploaded
@@ -255,7 +288,7 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
                 <CardFooter className="pt-0">
-                  <Link to="/twin/upload" className="text-sm text-warmth-600 hover:underline w-full text-right">
+                  <Link to="/twin/upload" className="text-sm text-[#011425] hover:underline w-full text-right">
                     Upload more data
                   </Link>
                 </CardFooter>
@@ -279,7 +312,7 @@ export default function Dashboard() {
                         className={`h-full ${
                           qualityScore < 40 ? 'bg-red-500' : 
                           qualityScore < 70 ? 'bg-yellow-500' : 
-                          'bg-green-500'
+                          'bg-[#1F4959]'
                         }`}
                         style={{ width: `${qualityScore}%` }}
                       ></div>
@@ -330,8 +363,8 @@ export default function Dashboard() {
                 </Button>
               </Link>
               <Link to="/demo-chat">
-                <Button size="lg" className="w-full sm:w-auto btn-gradient">
-                  Chat with Avatar <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" className="w-full sm:w-auto bg-[#1F4959] hover:bg-[#011425]">
+                  Chat with {displayName} <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>
