@@ -1,14 +1,17 @@
+
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Send, Mic, Menu, Phone, X, ArrowLeft } from "lucide-react";
+import { Send, Mic, Menu, Phone, X, ArrowLeft, VolumeX, Volume2, PlusCircle, Clock } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getInitials } from "@/utils/avatarUtils";
+import { getInitials, textToSpeech, generateAvatarHeadshot } from "@/utils/avatarUtils";
 import { toast } from "@/hooks/use-toast";
-import { Avatar as AvatarType, Conversation, Message as MessageType } from "@/types/supabase";
+import { Avatar as AvatarType, Conversation, Message as MessageType, TwinSettings } from "@/types/supabase";
+import { format } from "date-fns";
 
 export default function DemoChat() {
   const navigate = useNavigate();
@@ -17,11 +20,20 @@ export default function DemoChat() {
   const avatarId = searchParams.get('id');
   
   const [messages, setMessages] = useState<MessageType[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [avatarProfile, setAvatarProfile] = useState<AvatarType | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<TwinSettings>({
+    timePeriod: 'current',
+    emotionalState: 'neutral'
+  });
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const messageContainerRef = useRef<HTMLDivElement | null>(null);
   
   useEffect(() => {
     const fetchAvatar = async () => {
@@ -54,56 +66,18 @@ export default function DemoChat() {
         
         setAvatarProfile(avatar);
         
-        // Check for existing conversation or create a new one
-        const { data: conversations, error: convoError } = await supabase
-          .from("conversations")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("avatar_id", avatarId)
-          .order("created_at", { ascending: false })
-          .limit(1);
-          
-        if (convoError) {
-          console.error("Error fetching conversation:", convoError);
-        }
-        
-        let convoId = null;
-        if (conversations && conversations.length > 0) {
-          convoId = conversations[0].id;
-          setConversationId(convoId);
-          
-          // Fetch previous messages
-          const { data: pastMessages, error: messagesError } = await supabase
-            .from("messages")
-            .select("*")
-            .eq("conversation_id", convoId)
-            .order("timestamp", { ascending: true });
-            
-          if (messagesError) {
-            console.error("Error fetching messages:", messagesError);
-          }
-          
-          if (pastMessages && pastMessages.length > 0) {
-            setMessages(pastMessages);
-            return;
+        // If no composite image exists and we have photos, generate one
+        if (!avatar.composite_image && avatar.photos && avatar.photos.length >= 2) {
+          const headshot = await generateAvatarHeadshot(avatarId, avatar.photos);
+          if (headshot) {
+            avatar.composite_image = headshot;
+            // Refresh avatar data
+            setAvatarProfile({...avatar});
           }
         }
         
-        // Add initial message if no previous conversation
-        const displayName = avatar.first_name ? 
-          `${avatar.first_name}${avatar.last_name ? ' ' + avatar.last_name : ''}` : 
-          'Grandma Mae';
-        
-        setMessages([
-          { 
-            id: '1', 
-            role: 'twin', 
-            content: `Hello, dear. It's ${avatar.first_name || 'Grandma Mae'} here. It's so nice to see you. What would you like to talk about today?`,
-            timestamp: new Date().toISOString(),
-            conversation_id: convoId || ''
-          }
-        ]);
-        
+        // Fetch all conversations for this avatar
+        await fetchConversations(avatarId);
       } catch (error) {
         console.error("Error in initialization:", error);
         toast({
@@ -116,6 +90,87 @@ export default function DemoChat() {
     
     fetchAvatar();
   }, [user, avatarId, navigate]);
+
+  const fetchConversations = async (avatarId: string) => {
+    try {
+      // Fetch all conversations for this avatar
+      const { data: allConversations, error: convoError } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("avatar_id", avatarId)
+        .order("created_at", { ascending: false });
+        
+      if (convoError) {
+        console.error("Error fetching conversations:", convoError);
+        return;
+      }
+      
+      if (allConversations && allConversations.length > 0) {
+        setConversations(allConversations);
+        
+        // Load the most recent conversation by default
+        await loadConversation(allConversations[0].id);
+      } else {
+        // Start a new conversation if none exist
+        await startNewConversation();
+      }
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  };
+  
+  const loadConversation = async (convoId: string) => {
+    try {
+      setConversationId(convoId);
+      
+      // Fetch messages for this conversation
+      const { data: conversationMessages, error: messagesError } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", convoId)
+        .order("timestamp", { ascending: true });
+        
+      if (messagesError) {
+        console.error("Error fetching messages:", messagesError);
+        return;
+      }
+      
+      if (conversationMessages) {
+        setMessages(conversationMessages as MessageType[]);
+      }
+    } catch (error) {
+      console.error("Error loading conversation:", error);
+    }
+  };
+  
+  const startNewConversation = async () => {
+    if (!user || !avatarProfile) return;
+    
+    try {
+      // Clear the current messages
+      setMessages([]);
+      setConversationId(null);
+      
+      // Add initial message
+      const displayName = avatarProfile.first_name ? 
+        `${avatarProfile.first_name}${avatarProfile.last_name ? ' ' + avatarProfile.last_name : ''}` : 
+        'Grandma Mae';
+      
+      const initialMessage: MessageType = { 
+        id: '1', 
+        role: 'twin', 
+        content: `Hello, dear. It's ${avatarProfile.first_name || 'Grandma Mae'} here. It's so nice to see you. What would you like to talk about today?`,
+        timestamp: new Date().toISOString(),
+        conversation_id: ''
+      };
+      
+      setMessages([initialMessage]);
+      
+      // This will create a new conversation when the first message is sent
+    } catch (error) {
+      console.error("Error starting new conversation:", error);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !user || !avatarProfile) return;
@@ -152,7 +207,8 @@ export default function DemoChat() {
           message: userMessage.content,
           avatarId: avatarProfile.id,
           conversationId: conversationId,
-          pastMessages: pastMessages
+          pastMessages: pastMessages,
+          settings: settings
         }
       });
       
@@ -163,6 +219,9 @@ export default function DemoChat() {
       // Update conversation ID if this is a new conversation
       if (data.conversationId && !conversationId) {
         setConversationId(data.conversationId);
+        
+        // Fetch updated conversations
+        await fetchConversations(avatarProfile.id);
       }
       
       // Add AI response to messages
@@ -175,6 +234,14 @@ export default function DemoChat() {
       };
       
       setMessages(prev => [...prev, twinMessage]);
+      
+      // Convert the message to speech
+      const audioData = await textToSpeech(data.message, avatarProfile, settings);
+      if (audioData && audioRef.current) {
+        audioRef.current.src = audioData;
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -205,6 +272,47 @@ export default function DemoChat() {
     }
   };
   
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+  
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTo({
+        top: messageContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [messages]);
+  
+  // Handle audio ended event
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    
+    const handleAudioEnded = () => {
+      setIsPlaying(false);
+    };
+    
+    if (audioElement) {
+      audioElement.addEventListener('ended', handleAudioEnded);
+    }
+    
+    return () => {
+      if (audioElement) {
+        audioElement.removeEventListener('ended', handleAudioEnded);
+      }
+    };
+  }, []);
+  
   const displayName = avatarProfile?.first_name ? 
     `${avatarProfile.first_name}${avatarProfile.last_name ? ' ' + avatarProfile.last_name : ''}` : 
     'Grandma Mae';
@@ -230,8 +338,11 @@ export default function DemoChat() {
               
               <div className="flex flex-col items-center py-8">
                 <Avatar className="w-32 h-32 mb-4 bg-[#5C7C89]">
-                  {avatarProfile?.photos?.[0] ? (
-                    <AvatarImage src={avatarProfile.photos[0]} alt={displayName} />
+                  {(avatarProfile?.composite_image || avatarProfile?.photos?.[0]) ? (
+                    <AvatarImage 
+                      src={avatarProfile.composite_image || avatarProfile.photos[0]} 
+                      alt={displayName} 
+                    />
                   ) : null}
                   <AvatarFallback className="text-3xl font-semibold bg-[#5C7C89] text-white">
                     {getInitials(displayName)}
@@ -276,6 +387,36 @@ export default function DemoChat() {
                     <p className="text-center text-gray-500">No profile information available</p>
                   )}
                 </div>
+                
+                {/* Past conversations section */}
+                <div className="w-full mt-6">
+                  <h4 className="font-medium text-gray-700 mb-2">Past Conversations</h4>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {conversations.map((convo) => (
+                      <button
+                        key={convo.id}
+                        onClick={() => loadConversation(convo.id)}
+                        className={`w-full text-left p-2 rounded text-sm flex items-center ${
+                          conversationId === convo.id ? 'bg-gray-100' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>
+                          {format(new Date(convo.created_at), 'MMM d, yyyy h:mm a')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <Button 
+                    onClick={startNewConversation}
+                    variant="outline" 
+                    className="w-full mt-3 flex items-center justify-center"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Start New Conversation
+                  </Button>
+                </div>
               </div>
             </div>
             
@@ -284,14 +425,30 @@ export default function DemoChat() {
               <div className="flex border-b border-gray-100">
                 <div className="flex-1 p-4 flex items-center">
                   <div className="w-10 h-10 rounded-full bg-[#5C7C89] flex items-center justify-center mr-3">
-                    <span className="text-white font-medium">{getInitials(displayName).charAt(0)}</span>
+                    {(avatarProfile?.composite_image || avatarProfile?.photos?.[0]) ? (
+                      <img 
+                        src={avatarProfile.composite_image || avatarProfile.photos[0]} 
+                        alt={displayName}
+                        className="w-10 h-10 rounded-full object-cover" 
+                      />
+                    ) : (
+                      <span className="text-white font-medium">{getInitials(displayName).charAt(0)}</span>
+                    )}
                   </div>
                   <div>
                     <h2 className="font-medium">{displayName}</h2>
                     <p className="text-xs text-gray-500">Digital Twin</p>
                   </div>
                 </div>
-                <div className="p-4 flex items-center">
+                <div className="p-4 flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleAudio}
+                    className="text-gray-500"
+                  >
+                    {isPlaying ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -309,62 +466,75 @@ export default function DemoChat() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-600 block mb-1">Time Period</label>
-                      <select className="w-full p-2 border border-gray-300 rounded">
-                        <option>Current (Age {new Date().getFullYear() - Number(avatarProfile?.year_of_birth || 1945)})</option>
-                        <option>Middle Age (50s)</option>
-                        <option>Young Adult (20s)</option>
+                      <select 
+                        className="w-full p-2 border border-gray-300 rounded"
+                        value={settings.timePeriod}
+                        onChange={(e) => setSettings({...settings, timePeriod: e.target.value as any})}
+                      >
+                        <option value="current">Current (Age {new Date().getFullYear() - Number(avatarProfile?.year_of_birth || 1945)})</option>
+                        <option value="middleAge">Middle Age (50s)</option>
+                        <option value="youngAdult">Young Adult (20s)</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-sm text-gray-600 block mb-1">Emotional State</label>
-                      <select className="w-full p-2 border border-gray-300 rounded">
-                        <option>Neutral</option>
-                        <option>Happy</option>
-                        <option>Reflective</option>
-                        <option>Nostalgic</option>
+                      <select 
+                        className="w-full p-2 border border-gray-300 rounded"
+                        value={settings.emotionalState}
+                        onChange={(e) => setSettings({...settings, emotionalState: e.target.value as any})}
+                      >
+                        <option value="neutral">Neutral</option>
+                        <option value="happy">Happy</option>
+                        <option value="reflective">Reflective</option>
+                        <option value="nostalgic">Nostalgic</option>
                       </select>
                     </div>
                   </div>
                 </div>
               )}
               
-              <div className="h-[400px] overflow-y-auto p-4 flex flex-col space-y-4 flex-1" id="message-container">
-                {messages.map(message => (
-                  <div 
-                    key={message.id} 
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+              <ScrollArea className="h-[400px] flex-1" ref={messageContainerRef}>
+                <div className="p-4 flex flex-col space-y-4" id="message-container">
+                  {messages.map(message => (
                     <div 
-                      className={`max-w-[80%] rounded-2xl p-4 ${
-                        message.role === 'user' 
-                          ? 'bg-[#1F4959] text-white rounded-tr-none' 
-                          : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                      }`}
+                      key={message.id} 
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p>{message.content}</p>
                       <div 
-                        className={`text-xs mt-1 ${
-                          message.role === 'user' ? 'text-[#5C7C89]' : 'text-gray-500'
+                        className={`max-w-[80%] rounded-2xl p-4 ${
+                          message.role === 'user' 
+                            ? 'bg-[#1F4959] text-white rounded-tr-none' 
+                            : 'bg-gray-100 text-gray-800 rounded-tl-none'
                         }`}
                       >
-                        {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        <p>{message.content}</p>
+                        <div 
+                          className={`text-xs mt-1 ${
+                            message.role === 'user' ? 'text-[#5C7C89]' : 'text-gray-500'
+                          }`}
+                        >
+                          {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                
-                {isSending && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl p-4 bg-gray-100 text-gray-800 rounded-tl-none">
-                      <div className="flex space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
-                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-100"></div>
-                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-200"></div>
+                  ))}
+                  
+                  {isSending && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] rounded-2xl p-4 bg-gray-100 text-gray-800 rounded-tl-none">
+                        <div className="flex space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-100"></div>
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-200"></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              {/* Hidden audio element for speech */}
+              <audio ref={audioRef} style={{ display: 'none' }} />
               
               <div className="border-t border-gray-100 p-4 mt-auto">
                 <div className="flex items-center">

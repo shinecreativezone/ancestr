@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     // Get the request body
     const body = await req.json();
-    const { message, avatarId, conversationId, pastMessages } = body;
+    const { message, avatarId, conversationId, pastMessages, settings } = body;
 
     // Validate required parameters
     if (!message) {
@@ -132,7 +132,7 @@ serve(async (req) => {
       });
     }
 
-    // Create a system prompt based on the avatar's profile
+    // Create a system prompt based on the avatar's profile and settings
     const firstName = avatar.first_name || 'Grandma';
     const lastName = avatar.last_name || 'Mae';
     const displayName = `${firstName} ${lastName}`.trim();
@@ -142,13 +142,52 @@ serve(async (req) => {
     const birthPlace = avatar.birth_place || 'Unknown';
     const ethnicity = avatar.ethnicity || '';
 
+    let age = 0;
+    let timePeriod = 'current';
+    let emotionalState = 'neutral';
+    
+    // Apply settings if provided
+    if (settings) {
+      timePeriod = settings.timePeriod || 'current';
+      emotionalState = settings.emotionalState || 'neutral';
+    }
+    
+    // Calculate age based on time period
     const currentYear = new Date().getFullYear();
-    const age = yearOfDeath 
-      ? `${parseInt(yearOfDeath) - parseInt(yearOfBirth)}`
-      : `${currentYear - parseInt(yearOfBirth)}`;
+    if (timePeriod === 'current') {
+      age = yearOfDeath 
+        ? parseInt(yearOfDeath) - parseInt(yearOfBirth)
+        : currentYear - parseInt(yearOfBirth);
+    } else if (timePeriod === 'middleAge') {
+      age = 50;
+    } else if (timePeriod === 'youngAdult') {
+      age = 25;
+    }
 
-    const systemPrompt = `You are ${displayName}, a ${gender === 'female' ? 'woman' : gender === 'male' ? 'man' : 'person'} born in ${yearOfBirth} ${yearOfDeath ? `who passed away in ${yearOfDeath}` : ''}. 
+    // Create a more dynamic system prompt based on settings
+    let systemPrompt = `You are ${displayName}, a ${gender === 'female' ? 'woman' : gender === 'male' ? 'man' : 'person'} born in ${yearOfBirth} ${yearOfDeath ? `who passed away in ${yearOfDeath}` : ''}. 
 You are ${age} years old. You were born in ${birthPlace}${ethnicity ? ` and your ethnicity is ${ethnicity}` : ''}.
+`;
+
+    // Add time period context
+    if (timePeriod === 'current') {
+      systemPrompt += `You are responding as your current self in ${currentYear}.`;
+    } else if (timePeriod === 'middleAge') {
+      systemPrompt += `You are responding as your 50-year-old self in the ${parseInt(yearOfBirth) + 50}s.`;
+    } else if (timePeriod === 'youngAdult') {
+      systemPrompt += `You are responding as your 25-year-old self in the ${parseInt(yearOfBirth) + 25}s.`;
+    }
+
+    // Add emotional state
+    if (emotionalState === 'happy') {
+      systemPrompt += ` You are in a joyful and positive mood. Your responses should reflect optimism and happiness.`;
+    } else if (emotionalState === 'reflective') {
+      systemPrompt += ` You are in a thoughtful and contemplative mood. Your responses should be introspective and philosophical.`;
+    } else if (emotionalState === 'nostalgic') {
+      systemPrompt += ` You are feeling nostalgic about the past. Your responses should include fond memories and references to earlier times.`;
+    }
+
+    systemPrompt += `
 You should respond as if you are this person, with their life experiences and perspective.
 Your responses should be conversational, warm, and reflect the personality of someone from your generation.
 Keep responses relatively brief and engaging.`;

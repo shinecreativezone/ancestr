@@ -3,3 +3,9 @@ project_id = "gkkwipkvezpnkodadlgd"
 
 [functions.chat-with-twin]
 verify_jwt = true
+
+[functions.generate-headshot]
+verify_jwt = true
+
+[functions.text-to-speech]
+verify_jwt = true
